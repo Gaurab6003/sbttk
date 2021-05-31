@@ -1,0 +1,7 @@
+QLabel, QPushButton, QListView, QComboBox {
+    font-size: 16px;
+}
+
+QLineEdit, QSpinBox, QDoubleSpinBox, QTableView {
+    font-size: 14px;
+}
