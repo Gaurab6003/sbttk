@@ -1,6 +1,7 @@
 from decimal import Decimal
 from pathlib import Path
 
+import nepali_datetime
 from PySide2.QtCore import QAbstractTableModel, Qt, Slot, Signal
 from PySide2.QtWidgets import (QMainWindow, QWidget, QTableView, QVBoxLayout,
                                QFormLayout, QStatusBar, QLabel, QComboBox,
@@ -152,20 +153,26 @@ class DateRangeSummaryWindow(QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super(DateRangeSummaryWindow, self).__init__(*args, **kwargs)
-        self.year = date.today().year
-        self.dates = [date(self.year, month, 1) for month in range(1, 13)]
+        self.months = [m for m in range(1, 13)]
+        self.years = [y for y in
+                      range(nepali_datetime.MINYEAR, nepali_datetime.MAXYEAR)]
         self.__setup_ui()
-        self.load_monthly_data(0)
 
     def __setup_ui(self):
         self.setWindowTitle('Bank Transaction')
         # year label
-        year_header_label = QLabel('Year:')
-        year_label = QLabel(str(self.year))
+        year_label = QLabel('Year:')
+        self.years_combo_box = QComboBox()
+        years = map(lambda y: str(y), self.years)
+        self.years_combo_box.addItems(years)
+        self.years_combo_box.setCurrentIndex(
+            nepali_datetime.date.today().year - nepali_datetime.MINYEAR)
+        self.years_combo_box.currentIndexChanged.connect(self.load_monthly_data)
         # month label
         month_label = QLabel('Month:')
         self.month_combo_box = QComboBox()
-        months = map(lambda dt: dt.strftime('%B'), self.dates)
+        months = map(lambda m: nepali_datetime.date(2075, m, 1).strftime('%B'),
+                     self.months)
         self.month_combo_box.addItems(months)
         self.month_combo_box.currentIndexChanged.connect(self.load_monthly_data)
         # export transactions button
@@ -177,7 +184,7 @@ class DateRangeSummaryWindow(QMainWindow):
         self.deposit_deficit_label.setStyleSheet('font-weight: bold;')
         # create layout for form
         form_layout = QFormLayout()
-        form_layout.addRow(year_header_label, year_label)
+        form_layout.addRow(year_label, self.years_combo_box)
         form_layout.addRow(month_label, self.month_combo_box)
         form_layout.addWidget(export_button)
         form_layout.addRow(deposit_deficit_header_label,
@@ -248,6 +255,8 @@ class DateRangeSummaryWindow(QMainWindow):
         self.setCentralWidget(widget)
         # create status bar
         self.setStatusBar(QStatusBar())
+        # load data for the first time
+        self.month_combo_box.setCurrentIndex(0)
 
     def status_bar_message(self, msg):
         self.statusBar().clearMessage()
@@ -280,12 +289,17 @@ class DateRangeSummaryWindow(QMainWindow):
             self.month_combo_box.setEnabled(True)
 
     @Slot()
-    def load_monthly_data(self, index):
+    def load_monthly_data(self):
         # if nothing is selected and index is out of range ignore
-        if index is None or index >= len(self.dates):
+        year_index = self.years_combo_box.currentIndex()
+        month_index = self.month_combo_box.currentIndex()
+        if year_index is None or year_index >= len(self.years):
+            return
+        if month_index is None or month_index >= len(self.months):
             return
         # load data
-        dt = self.dates[index]
+        dt = nepali_datetime.date(self.years[year_index],
+                                  self.months[month_index], 1)
         with Session.begin() as session:
             transactions = get_monthly_transactions(session, dt)
             rin_laganis, sawa_asulis, bank_transactions, totals = transactions

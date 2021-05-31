@@ -44,6 +44,7 @@ class TransactionsTableModel(QAbstractTableModel):
                 if col == 4: return str(self.totals['harjana_total'])
                 if col == 5: return str(self.totals['bachat_total'])
                 if col == 6: return str(self.totals['banki_sawa'])
+                if col == 7: return str(self.totals['grand_total'])
             else:
                 # else show normal transactions
                 tx = self.transactions[row]
@@ -58,13 +59,18 @@ class TransactionsTableModel(QAbstractTableModel):
                 if col == 4: return str(tx.harjana)
                 if col == 5: return str(tx.bachat)
                 if col == 6: return str(tx.banki_sawa)
-                if col == 7: return str(tx.remarks)
+                if col == 7:
+                    if tx.is_rin_lagani:
+                        return '0'
+                    else:
+                        return str(tx.total)
+                if col == 8: return str(tx.remarks)
 
     def rowCount(self, parent):
         return len(self.transactions) + 1
 
     def columnCount(self, parent):
-        return 8
+        return 9
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
@@ -75,7 +81,8 @@ class TransactionsTableModel(QAbstractTableModel):
             if section == 4: return 'Harjana'
             if section == 5: return 'Bachat'
             if section == 6: return 'Banki Sawa'
-            if section == 7: return 'Remarks'
+            if section == 7: return 'Grand total'
+            if section == 8: return 'Remarks'
 
         if orientation == Qt.Vertical and role == Qt.DisplayRole:
             return section + 1

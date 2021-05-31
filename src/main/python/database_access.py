@@ -486,7 +486,7 @@ def get_rin_laganis_in_month(session, member_id, date):
     filtered_rin_laganis = []
     for rin_lagani in rin_laganis:
         date1 = str_to_date(rin_lagani.date)
-        if date.year == date1.year and date.month == date1.month:
+        if date.year == date1.year and date.months == date1.months:
             filtered_rin_laganis.append(filtered_rin_laganis)
     return filtered_rin_laganis
 
@@ -503,7 +503,7 @@ def get_sawa_asulis_in_month(session, member_id, date):
     filtered_sawa_asulis = []
     for sawa_asuli in sawa_asulis:
         date1 = str_to_date(sawa_asuli.date)
-        if date.year == date1.year and date.month == date1.month:
+        if date.year == date1.year and date.months == date1.months:
             filtered_sawa_asulis.append(sawa_asuli)
     return filtered_sawa_asulis
 
@@ -641,7 +641,7 @@ def get_all_bank_transactions_in_month(session, date):
     filtered_transactions = []
     for bank_transaction in bank_transactions:
         date1 = str_to_date(bank_transaction.date)
-        if date.year == date1.year and date.month == date1.month:
+        if date.year == date1.year and date.months == date1.months:
             filtered_transactions.append(filtered_transactions)
     return filtered_transactions
 
@@ -710,7 +710,8 @@ def get_transactions_by_member_id(session, member_id):
         'byaj_total': zero,
         'harjana_total': zero,
         'bachat_total': zero,
-        'banki_sawa': zero
+        'banki_sawa': zero,
+        'grand_total': zero
     }
     transactions = []
     rin_laganis = get_rin_laganis_by_member_id(session, member_id)
@@ -728,6 +729,7 @@ def get_transactions_by_member_id(session, member_id):
         for sawa_asuli in sawa_asulis:
             # convert to transaction dto
             sawa_asuli_dto = sawa_asuli_to_transaction_dto(sawa_asuli)
+            totals['grand_total'] += sawa_asuli_dto.total
             banki_sawa -= sawa_asuli_dto.sawa_asuli
             sawa_asuli_dto.banki_sawa = banki_sawa
             transactions.append(sawa_asuli_dto)
@@ -927,3 +929,30 @@ def get_member_wise_summary(session):
         member_summaries.append(dto)
 
     return member_summaries, totals
+
+
+def complete_year(session, year_start_date):
+    # check if date is valid
+    if str_to_date(year_start_date) is None:
+        return 'Invalid year start date'
+    # for every member calculate alya rin
+    for member in get_member_list(session):
+        # create alya rin
+        rin_lagani = get_latest_rin_lagani(session, member.id)
+        alya_lagani = None
+        if not rin_lagani is None:
+            banki_sawa = calculate_banki_sawa(rin_lagani)
+            if banki_sawa > Decimal(0):
+                alya_lagani = RinLagani(date=year_start_date, amount=banki_sawa,
+                                       is_alya_rin=True,
+                                       kista_per_month=rin_lagani.kista_per_month,
+                                       remarks=rin_lagani.remarks,
+                                       member_id=member.id)
+        # delete all rin laganis for member
+        member.rin_laganis = []
+        # create alya rin lagani
+        if not alya_lagani is None:
+            session.add(alya_lagani)
+        # delete all sawa asulis of the member
+        for sawa_asuli in member.sawa_asulis:
+            session.delete(sawa_asuli)

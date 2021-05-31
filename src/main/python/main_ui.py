@@ -188,6 +188,7 @@ class MainWindow(QMainWindow):
     def handle_settings(self):
         if self.settings_window is None:
             self.settings_window = SettingsWindow(self.app_ctxt, parent=self)
+            self.settings_window.year_completed.connect(lambda: self.close())
         self.settings_window.show()
 
     @Slot()
